@@ -1,0 +1,33 @@
+data:
+  mode: toy                 # "toy" or "real"
+  toy_dir: data/processed/toy
+  splits_dir: data/splits           # set to data/splits_deam or data/splits_musiccaps
+  graph_dir: data/processed/graphs  # set to data/processed/deam_graphs or musiccaps_graphs
+  sample_rate: 22050
+  n_mels: 128
+  n_chroma: 12
+  segment_seconds: 5
+  max_text_len: 128
+
+model:
+  bert_name: distilbert-base-uncased
+  bert_hidden: 768
+  gnn_hidden: 128
+  gnn_layers: 3
+  gnn_type: sage            # "sage" or "gat"
+  fusion_type: cross_attn   # "cross_attn" or "concat"
+  num_tags: 20
+
+train:
+  batch_size: 8
+  lr: 2.0e-5
+  gnn_lr: 1.0e-3
+  epochs: 3
+  tag_weight: 1.0     # set to 0 for DEAM-only Task 3 runs (no tag labels there)
+  emotion_alpha: 0.5  # set to 0 for MagnaTagATune-only Task 3 runs (no VA labels there)
+  emotion_beta: 0.5
+  contrastive_temperature: 0.07
+  seed: 42
+
+eval:
+  top_k_retrieval: [1, 5, 10]
