@@ -1,0 +1,4 @@
+
+results/*.pt
+data/processed/real/
+src/__pycache__/
