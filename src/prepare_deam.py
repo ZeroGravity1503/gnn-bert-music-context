@@ -50,9 +50,9 @@ def load_static_annotations(raw_dir):
         rename = {}
         for c in df.columns:
             cl = c.strip().lower()
-            if "valence" in cl and "mean" in cl:
+            if cl == "valence_mean":
                 rename[c] = "valence"
-            elif "arousal" in cl and "mean" in cl:
+            elif cl == "arousal_mean":
                 rename[c] = "arousal"
             elif cl in ("song_id", "songid", "id"):
                 rename[c] = "song_id"
