@@ -88,9 +88,18 @@ def load_existing_manifest(out_path):
 def build_manifest(df, top_tags, raw_dir, feat_dir, sr, n_mels, n_chroma,
                     window_seconds, folders, max_clips, existing, split_name):
     os.makedirs(feat_dir, exist_ok=True)
-    done_ids = {item["track_id"] for item in existing}
-    manifest = list(existing)  # keep what's already done
-
+    # Only trust "already done" entries whose feature file ACTUALLY still
+    # exists on disk -- a Colab restart can wipe /content while the
+    # split JSON (on Drive) still lists those tracks as done, which
+    # would otherwise produce phantom references that crash training.
+    valid_existing = [item for item in existing if os.path.exists(item["feature_path"])]
+    stale_count = len(existing) - len(valid_existing)
+    if stale_count > 0:
+        print(f"  [{split_name}] {stale_count} previously-done entries have "
+              f"missing feature files (likely a Colab restart wiped /content) "
+              f"-- reprocessing them.")
+    done_ids = {item["track_id"] for item in valid_existing}
+    manifest = list(valid_existing)  # keep only what's verified still on disk
     subset = df[df["mp3_path"].str[0].isin(folders)]
     if max_clips is not None:
         subset = subset.head(max_clips + len(done_ids))  # overshoot to account for skips/failures
