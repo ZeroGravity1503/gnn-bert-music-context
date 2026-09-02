@@ -1,38 +1,24 @@
 """
 Build DEAM splits for Task 3's emotion-regression extension.
 
-Run AFTER downloading DEAM (see scripts/download_deam.sh):
+Matches DEAM's REAL on-disk layout (confirmed against an actual download,
+2026 release):
+  <raw_dir>/MEMD_audio/<song_id>.mp3                          (1,802 files)
+  <raw_dir>/annotations/annotations averaged per song/song_level/
+      static_annotations_averaged_songs_1_2000.csv
+      static_annotations_averaged_songs_2000_2058.csv
+  (two files, split by song ID range -- concatenated here to cover all 1,802)
 
-    python src/prepare_deam.py --raw_dir data/raw/deam \
-        --feat_dir data/processed/real/deam_features \
-        --splits_dir data/splits_deam
-    python src/graph_builder.py --split_dirs data/splits_deam \
-        --out_dir data/processed/deam_graphs
-      # (graph_builder.py's default process_split() reads a hardcoded
-      #  data/splits/*.json; either point it at data/splits_deam via the
-      #  toy_dir/out_dir args directly in a small driver script, or copy
-      #  data/splits_deam/*.json into data/splits/ temporarily -- see
-      #  README for the exact one-liner.)
+    python src/prepare_deam.py --raw_dir /content/deam_raw \
+        --feat_dir /content/deam_features --splits_dir data/splits_deam
 
 IMPORTANT -- why this is a SEPARATE split, not merged with MagnaTagATune:
-DEAM's 1,802 clips and MagnaTagATune's ~26,000 clips are different songs
-by different artists. There is no genuine way to say "this MTAT clip's
-valence is X" -- so this script does NOT try to align the two datasets.
-Instead:
-  - Train Task 3 on MagnaTagATune with emotion_alpha=emotion_beta=0
-    (tag+text fusion only, matching the primary tagging objective).
-  - Separately train/evaluate Task 3 on this DEAM split with a config
-    that sets tag_weight=0 and emotion_alpha/beta>0 (pure emotion
-    regression, matching spec Section 4.3's framing of DEAM as an
-    "emotion extension" / auxiliary loss, not a required joint label).
-This is a disclosed, deliberate design choice -- write it up as such in
-the report rather than silently zero-filling missing labels.
-
-Captions here are synthesized from DEAM's genre/tag metadata (if you
-downloaded metadata.zip alongside the audio) or left as a generic
-placeholder if unavailable -- Task 3's text branch still needs *some*
-input, but DEAM's synthesized captions should not be conflated with
-MusicCaps' real human captions in your writeup.
+DEAM's 1,802 clips and MagnaTagATune's clips are different songs by
+different artists -- there's no genuine per-track alignment. Train Task 3
+on MagnaTagATune with emotion_alpha=beta=0 (tag+text only), and
+separately on this DEAM split with tag_weight=0, emotion_alpha/beta>0
+(pure emotion regression) -- a disclosed, deliberate design choice, not
+a hidden shortcut. See config_deam.yaml.
 """
 import argparse
 import glob
@@ -45,32 +31,58 @@ import pandas as pd
 from audio_features import extract_features, fixed_window_segments
 
 
-def load_static_annotations(annotations_csv):
-    df = pd.read_csv(annotations_csv)
-    df.columns = [c.strip() for c in df.columns]
-    # DEAM's static CSV columns are typically:
-    # song_id, valence_mean, arousal_mean, valence_std, arousal_std
-    # (exact names vary slightly by release year -- normalize here)
-    rename = {}
-    for c in df.columns:
-        cl = c.lower()
-        if "valence" in cl and "mean" in cl:
-            rename[c] = "valence"
-        elif "arousal" in cl and "mean" in cl:
-            rename[c] = "arousal"
-        elif cl in ("song_id", "songid", "id"):
-            rename[c] = "song_id"
-    df = df.rename(columns=rename)
-    return df[["song_id", "valence", "arousal"]].set_index("song_id")
+def load_static_annotations(raw_dir):
+    """Finds and concatenates BOTH static annotation files (DEAM splits
+    them by song ID range), wherever they are nested under raw_dir."""
+    pattern = os.path.join(raw_dir, "**", "static_annotations_averaged_songs_*.csv")
+    files = sorted(glob.glob(pattern, recursive=True))
+    if not files:
+        raise FileNotFoundError(
+            f"No static_annotations_averaged_songs_*.csv found under {raw_dir}. "
+            f"Check that DEAM_Annotations.zip was extracted there."
+        )
+    print(f"Found {len(files)} annotation file(s): {[os.path.basename(f) for f in files]}")
+
+    dfs = []
+    for path in files:
+        df = pd.read_csv(path)
+        df.columns = [c.strip() for c in df.columns]  # DEAM's CSVs have leading-space column names
+        rename = {}
+        for c in df.columns:
+            cl = c.strip().lower()
+            if "valence" in cl and "mean" in cl:
+                rename[c] = "valence"
+            elif "arousal" in cl and "mean" in cl:
+                rename[c] = "arousal"
+            elif cl in ("song_id", "songid", "id"):
+                rename[c] = "song_id"
+        df = df.rename(columns=rename)
+        dfs.append(df[["song_id", "valence", "arousal"]])
+
+    combined = pd.concat(dfs, ignore_index=True).set_index("song_id")
+    print(f"Total songs with valence/arousal labels: {len(combined)}")
+    return combined
+
+
+def find_audio_dir(raw_dir):
+    """DEAM's audio folder is named MEMD_audio -- search for it rather
+    than hardcode, in case a future release renames it."""
+    candidates = glob.glob(os.path.join(raw_dir, "**", "MEMD_audio"), recursive=True)
+    if candidates:
+        return candidates[0]
+    # fallback: any folder directly containing a bunch of numeric .mp3 files
+    for root, dirs, files in os.walk(raw_dir):
+        mp3s = [f for f in files if f.endswith(".mp3")]
+        if len(mp3s) > 100:
+            return root
+    raise FileNotFoundError(f"Could not find DEAM's audio folder under {raw_dir}")
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw_dir", required=True)
-    ap.add_argument("--feat_dir", default="data/processed/real/deam_features")
+    ap.add_argument("--feat_dir", default="/content/deam_features")
     ap.add_argument("--splits_dir", default="data/splits_deam")
-    ap.add_argument("--annotations_csv", default=None,
-                     help="Defaults to <raw_dir>/annotations/static_annotations_averaged_songs_1_2000.csv")
     ap.add_argument("--sr", type=int, default=22050)
     ap.add_argument("--n_mels", type=int, default=128)
     ap.add_argument("--n_chroma", type=int, default=12)
@@ -78,42 +90,55 @@ def main():
     ap.add_argument("--val_frac", type=float, default=0.1)
     ap.add_argument("--test_frac", type=float, default=0.2)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--max_clips", type=int, default=None,
+                     help="Optional cap for a faster run, e.g. 500")
     args = ap.parse_args()
 
-    ann_csv = args.annotations_csv or os.path.join(
-        args.raw_dir, "annotations", "static_annotations_averaged_songs_1_2000.csv")
-    va = load_static_annotations(ann_csv)
+    va = load_static_annotations(args.raw_dir)
+    audio_dir = find_audio_dir(args.raw_dir)
+    print(f"Audio dir: {audio_dir}")
 
-    audio_files = sorted(glob.glob(os.path.join(args.raw_dir, "audio", "*.mp3")))
+    audio_files = sorted(glob.glob(os.path.join(audio_dir, "*.mp3")))
+    if args.max_clips:
+        audio_files = audio_files[:args.max_clips]
     if not audio_files:
-        print(f"No audio found under {args.raw_dir}/audio -- did you unzip DEAM_audio.zip there?")
+        print(f"No audio found under {audio_dir}")
         return
 
     os.makedirs(args.feat_dir, exist_ok=True)
     items = []
-    for path in audio_files:
+    for i, path in enumerate(audio_files):
         song_id_str = os.path.splitext(os.path.basename(path))[0]
         try:
             song_id = int(song_id_str)
         except ValueError:
             song_id = song_id_str
         if song_id not in va.index:
-            continue  # no VA label for this file, skip rather than guess
+            continue
 
-        mel, chroma, _ = extract_features(path, sr=args.sr, n_mels=args.n_mels, n_chroma=args.n_chroma)
-        bounds = fixed_window_segments(mel.shape[1], args.sr, window_seconds=args.window_seconds)
         feat_path = os.path.join(args.feat_dir, f"{song_id_str}.npz")
-        np.savez_compressed(feat_path, mel=mel, chroma=chroma, segment_bounds=np.array(bounds))
+        if not os.path.exists(feat_path):  # resume-safe, same pattern as MTAT script
+            try:
+                mel, chroma, _ = extract_features(path, sr=args.sr, n_mels=args.n_mels, n_chroma=args.n_chroma)
+            except Exception as e:
+                print(f"  [skip] {path}: {e}")
+                continue
+            bounds = fixed_window_segments(mel.shape[1], args.sr, window_seconds=args.window_seconds)
+            np.savez_compressed(feat_path, mel=mel, chroma=chroma, segment_bounds=np.array(bounds))
 
         items.append({
-            "track_id": song_id_str,
+            "track_id": f"deam_{song_id_str}",
             "feature_path": feat_path,
             "caption": "an instrumental clip rated for valence and arousal.",
             "caption_is_synthetic": True,
-            "tags": None,  # DEAM has no tag labels; train with tag_weight=0 on this split
+            "tags": None,  # DEAM has no tag labels -- config_deam.yaml sets tag_weight=0
             "valence": float(va.loc[song_id, "valence"]),
             "arousal": float(va.loc[song_id, "arousal"]),
         })
+        if (i + 1) % 200 == 0:
+            print(f"  processed {i + 1}/{len(audio_files)}")
+
+    print(f"Total usable items (audio + label match): {len(items)}")
 
     rng = np.random.default_rng(args.seed)
     perm = rng.permutation(len(items))
@@ -124,12 +149,8 @@ def main():
 
     splits = {"train": [], "val": [], "test": []}
     for i, item in enumerate(items):
-        if i in test_idx:
-            splits["test"].append(item)
-        elif i in val_idx:
-            splits["val"].append(item)
-        else:
-            splits["train"].append(item)
+        key = "test" if i in test_idx else ("val" if i in val_idx else "train")
+        splits[key].append(item)
 
     os.makedirs(args.splits_dir, exist_ok=True)
     for name, manifest in splits.items():
@@ -139,10 +160,8 @@ def main():
         print(f"[{name}] {len(manifest)} tracks -> {out_path}")
 
     print("\nNOTE: this is a random split (DEAM has no standard official "
-          "train/val/test partition the way MTAT does) -- document that "
-          "choice in your report's Section 3 (Dataset & preprocessing).")
-    print("Remember: set train.tag_weight=0 and emotion_alpha/beta>0 in "
-          "config.yaml for runs on this split.")
+          "train/val/test partition) -- document that choice in your report.")
+    print("Remember: config_deam.yaml sets tag_weight=0, emotion_alpha/beta>0 for this split.")
 
 
 if __name__ == "__main__":
