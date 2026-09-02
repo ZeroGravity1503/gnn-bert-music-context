@@ -95,6 +95,28 @@ def eval_task2(cfg, device, also_cnn_baseline=True):
         cnn = CNNBaseline(cfg["data"]["n_mels"], len(tags)).to(device)
         cnn.load_state_dict(torch.load("results/cnn_baseline.pt", map_location=device))
         cnn.eval()
+
+        with open(os.path.join(splits_dir, "test.json")) as f:
+            test_manifest = json.load(f)
+
+        X, Y = [], []
+        T = 130  # must match the fixed length used in train_cnn_baseline
+        for item in test_manifest:
+            d = np.load(item["feature_path"])
+            mel = d["mel"]
+            if mel.shape[1] < T:
+                mel = np.pad(mel, ((0, 0), (0, T - mel.shape[1])))
+            else:
+                mel = mel[:, :T]
+            X.append(mel)
+            Y.append(item["tags"])
+        X = torch.tensor(np.stack(X), dtype=torch.float32).to(device)
+        Y = np.stack(Y)
+
+        cnn_logits = cnn(X)
+        cnn_prob = torch.sigmoid(cnn_logits).cpu().numpy()
+        metrics["cnn_baseline"] = tag_metrics(Y, cnn_prob)
+
     return metrics
 
 
@@ -285,13 +307,24 @@ def main():
     os.makedirs("results", exist_ok=True)
 
     all_metrics = {}
+
+    # Train B2 CNN baseline FIRST (if requested and not already trained),
+    # so that eval_task2 below can find and evaluate the checkpoint in
+    # this same run, instead of needing a second invocation.
+    if args.baselines and not os.path.exists("results/cnn_baseline.pt"):
+        print("Training B2 CNN baseline...")
+        train_cnn_baseline(cfg, epochs=3, device=device)
+
     tasks = ["1", "2", "3", "4"] if args.task == "all" else [args.task]
     for t in tasks:
         try:
             if t == "1":
                 all_metrics["task1_bert"] = eval_task1(cfg, device)
             elif t == "2":
-                all_metrics["task2_gnn"] = eval_task2(cfg, device)["gnn"]
+                task2_result = eval_task2(cfg, device, also_cnn_baseline=args.baselines)
+                all_metrics["task2_gnn"] = task2_result["gnn"]
+                if "cnn_baseline" in task2_result:
+                    all_metrics["B2_cnn"] = task2_result["cnn_baseline"]
             elif t == "3":
                 all_metrics["task3_fusion"] = eval_task3(cfg, device)
             elif t == "4":
@@ -308,10 +341,6 @@ def main():
         rng = np.random.default_rng(cfg["train"]["seed"])
         y_prob_random = rng.random(y_true.shape)
         all_metrics["B1_random"] = tag_metrics(y_true, y_prob_random)
-
-        if not os.path.exists("results/cnn_baseline.pt"):
-            print("Training B2 CNN baseline...")
-            train_cnn_baseline(cfg, epochs=3, device=device)
 
     print(json.dumps(all_metrics, indent=2))
     with open("results/metrics.json", "w") as f:
