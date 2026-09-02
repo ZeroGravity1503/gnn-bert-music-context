@@ -1,11 +1,11 @@
 """
 Evaluation for Tasks 1-4 (Section 6 metrics + Section 8 baseline table).
 
-    python src/evaluate.py --task 1
-    python src/evaluate.py --task 2
-    python src/evaluate.py --task 3   # also dumps a t-SNE plot of z
-    python src/evaluate.py --task 4   # retrieval R@K + qualitative examples
-    python src/evaluate.py --task all --baselines   # full comparison table
+    python src/evaluate.py --task 1 --config config_mtat.yaml
+    python src/evaluate.py --task 2 --config config_mtat.yaml
+    python src/evaluate.py --task 3 --config config_mtat.yaml   # also dumps a t-SNE plot of z
+    python src/evaluate.py --task 4 --config config_musiccaps.yaml
+    python src/evaluate.py --task all --config config_mtat.yaml --baselines
 """
 import argparse
 import json
@@ -38,7 +38,6 @@ def tag_metrics(y_true, y_prob, threshold=0.5):
     y_pred = (y_prob >= threshold).astype(int)
     macro_f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
     micro_f1 = f1_score(y_true, y_pred, average="micro", zero_division=0)
-    # AUC-PR per tag, averaged (skip tags with no positive examples)
     aucprs = []
     for k in range(y_true.shape[1]):
         if y_true[:, k].sum() > 0:
@@ -56,7 +55,8 @@ def eval_task1(cfg, device):
     model.load_state_dict(torch.load("results/task1_bert.pt", map_location=device))
     model.eval()
 
-    ds = MusicTagDataset("test", tokenizer, cfg["data"]["max_text_len"])
+    splits_dir = cfg["data"].get("splits_dir", "data/splits")
+    ds = MusicTagDataset("test", tokenizer, cfg["data"]["max_text_len"], splits_dir=splits_dir)
     dl = DataLoader(ds, batch_size=cfg["train"]["batch_size"])
     y_true, y_prob = [], []
     for batch in dl:
@@ -70,7 +70,9 @@ def eval_task1(cfg, device):
 @torch.no_grad()
 def eval_task2(cfg, device, also_cnn_baseline=True):
     tags = load_tag_vocab()
-    test_ds = MusicGraphDataset("test")
+    splits_dir = cfg["data"].get("splits_dir", "data/splits")
+    graph_dir = cfg["data"].get("graph_dir", "data/processed/graphs")
+    test_ds = MusicGraphDataset("test", graph_dir=graph_dir, splits_dir=splits_dir)
     in_dim = test_ds[0]["x"].shape[1]
     model = GNNTagClassifier(
         in_dim, cfg["model"]["gnn_hidden"], cfg["model"]["gnn_layers"],
@@ -93,23 +95,20 @@ def eval_task2(cfg, device, also_cnn_baseline=True):
         cnn = CNNBaseline(cfg["data"]["n_mels"], len(tags)).to(device)
         cnn.load_state_dict(torch.load("results/cnn_baseline.pt", map_location=device))
         cnn.eval()
-        # Note: requires mel spectrograms aligned to the same test split;
-        # see train_cnn_baseline() below for how B2 is trained.
     return metrics
 
 
 def train_cnn_baseline(cfg, epochs, device):
     """B2 baseline: CNN on raw mel-spectrogram (no graph, no text)."""
-    import json as _json
     tags = load_tag_vocab()
-    with open("data/splits/train.json") as f:
-        manifest = _json.load(f)
+    splits_dir = cfg["data"].get("splits_dir", "data/splits")
+    with open(os.path.join(splits_dir, "train.json")) as f:
+        manifest = json.load(f)
 
     X, Y = [], []
     for item in manifest:
         d = np.load(item["feature_path"])
         mel = d["mel"]
-        # pad/crop to fixed length for simple batching
         T = 130
         if mel.shape[1] < T:
             mel = np.pad(mel, ((0, 0), (0, T - mel.shape[1])))
@@ -144,19 +143,27 @@ def train_cnn_baseline(cfg, epochs, device):
 @torch.no_grad()
 def eval_task3(cfg, device, make_tsne=True):
     tokenizer = AutoTokenizer.from_pretrained(cfg["model"]["bert_name"])
-    tags = load_tag_vocab()
-    test_ds = MusicFusionDataset("test", tokenizer, cfg["data"]["max_text_len"])
+    splits_dir = cfg["data"].get("splits_dir", "data/splits")
+    graph_dir = cfg["data"].get("graph_dir", "data/processed/graphs")
+    try:
+        tags = load_tag_vocab()
+        num_tags = len(tags)
+    except FileNotFoundError:
+        num_tags = cfg["model"]["num_tags"]
+
+    test_ds = MusicFusionDataset("test", tokenizer, cfg["data"]["max_text_len"],
+                                  graph_dir=graph_dir, splits_dir=splits_dir, num_tags=num_tags)
     in_dim = test_ds[0]["x"].shape[1]
     model = GNNBertFusionModel(
         bert_name=cfg["model"]["bert_name"], gnn_in_dim=in_dim,
         gnn_hidden=cfg["model"]["gnn_hidden"], gnn_layers=cfg["model"]["gnn_layers"],
-        num_tags=len(tags), fusion_type=cfg["model"]["fusion_type"],
+        num_tags=num_tags, fusion_type=cfg["model"]["fusion_type"],
     ).to(device)
     model.load_state_dict(torch.load("results/task3_fusion.pt", map_location=device))
     model.eval()
     dl = DataLoader(test_ds, batch_size=cfg["train"]["batch_size"], collate_fn=fusion_collate_fn)
 
-    y_true, y_prob, va_true, va_pred_all, z_all = [], [], [], [], []
+    y_true, y_prob, va_true, va_pred_all = [], [], [], []
     for batch in dl:
         tag_logits, va_pred = model(
             batch["input_ids"].to(device), batch["attention_mask"].to(device),
@@ -174,17 +181,20 @@ def eval_task3(cfg, device, make_tsne=True):
     metrics = tag_metrics(y_true, y_prob)
     metrics["valence_mae"] = float(np.mean(np.abs(va_true[:, 0] - va_pred_all[:, 0])))
     metrics["arousal_mae"] = float(np.mean(np.abs(va_true[:, 1] - va_pred_all[:, 1])))
-    metrics["valence_r2"] = float(r2_score(va_true[:, 0], va_pred_all[:, 0]))
-    metrics["arousal_r2"] = float(r2_score(va_true[:, 1], va_pred_all[:, 1]))
+    try:
+        metrics["valence_r2"] = float(r2_score(va_true[:, 0], va_pred_all[:, 0]))
+        metrics["arousal_r2"] = float(r2_score(va_true[:, 1], va_pred_all[:, 1]))
+    except Exception:
+        pass  # R2 undefined if valence/arousal are constant (e.g. all-zero placeholders on MTAT)
 
     if make_tsne:
-        plot_tsne_fusion(model, test_ds, tags, device, cfg)
+        plot_tsne_fusion(model, test_ds, device, cfg)
 
     return metrics
 
 
 @torch.no_grad()
-def plot_tsne_fusion(model, test_ds, tags, device, cfg):
+def plot_tsne_fusion(model, test_ds, device, cfg):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -211,7 +221,7 @@ def plot_tsne_fusion(model, test_ds, tags, device, cfg):
 
     os.makedirs("results/plots", exist_ok=True)
     plt.figure(figsize=(7, 6))
-    scatter = plt.scatter(proj[:, 0], proj[:, 1], c=dominant_tag, cmap="tab20", s=18)
+    plt.scatter(proj[:, 0], proj[:, 1], c=dominant_tag, cmap="tab20", s=18)
     plt.title("t-SNE of fused representation z (colored by dominant tag)")
     plt.xlabel("dim 1"); plt.ylabel("dim 2")
     plt.tight_layout()
@@ -223,7 +233,10 @@ def plot_tsne_fusion(model, test_ds, tags, device, cfg):
 @torch.no_grad()
 def eval_task4(cfg, device, n_qualitative=10):
     tokenizer = AutoTokenizer.from_pretrained(cfg["model"]["bert_name"])
-    test_ds = MusicCapsPairDataset("test", tokenizer, cfg["data"]["max_text_len"])
+    splits_dir = cfg["data"].get("splits_dir", "data/splits")
+    graph_dir = cfg["data"].get("graph_dir", "data/processed/graphs")
+    test_ds = MusicCapsPairDataset("test", tokenizer, cfg["data"]["max_text_len"],
+                                    graph_dir=graph_dir, splits_dir=splits_dir)
     in_dim = test_ds[0]["x"].shape[1]
     model = ContrastiveGNNBert(
         bert_name=cfg["model"]["bert_name"], gnn_in_dim=in_dim,
@@ -232,7 +245,7 @@ def eval_task4(cfg, device, n_qualitative=10):
     ).to(device)
     model.load_state_dict(torch.load("results/task4_contrastive.pt", map_location=device))
     model.eval()
-    dl = DataLoader(test_ds, batch_size=len(test_ds), collate_fn=contrastive_collate_fn)  # full-batch for retrieval
+    dl = DataLoader(test_ds, batch_size=len(test_ds), collate_fn=contrastive_collate_fn)
     batch = next(iter(dl))
     g_emb, t_emb = model(
         batch["input_ids"].to(device), batch["attention_mask"].to(device),
@@ -241,7 +254,6 @@ def eval_task4(cfg, device, n_qualitative=10):
     )
     recall = retrieval_recall_at_k(g_emb, t_emb, k_list=tuple(cfg["eval"]["top_k_retrieval"]))
 
-    # qualitative: for first n_qualitative captions, show top-3 retrieved track_ids
     sim = (t_emb @ g_emb.t()).cpu().numpy()
     examples = []
     for i in range(min(n_qualitative, len(batch["caption"]))):
@@ -264,8 +276,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True, choices=["1", "2", "3", "4", "all"])
     ap.add_argument("--config", default="config.yaml")
-    ap.add_argument("--baselines", action="store_true",
-                     help="Also train/eval B1 (random) and B2 (CNN) baselines for comparison")
+    ap.add_argument("--baselines", action="store_true")
     args = ap.parse_args()
 
     with open(args.config) as f:
@@ -289,9 +300,9 @@ def main():
             print(f"[skip] Task {t}: checkpoint not found ({e}). Run train.py --task {t} first.")
 
     if args.baselines:
-        # B1: random predictor, for reference
         tags = load_tag_vocab()
-        with open("data/splits/test.json") as f:
+        splits_dir = cfg["data"].get("splits_dir", "data/splits")
+        with open(os.path.join(splits_dir, "test.json")) as f:
             test_manifest = json.load(f)
         y_true = np.array([m["tags"] for m in test_manifest])
         rng = np.random.default_rng(cfg["train"]["seed"])
