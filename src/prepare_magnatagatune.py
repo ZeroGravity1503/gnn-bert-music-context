@@ -1,55 +1,31 @@
 """
 Build data/splits/{train,val,test}.json from a downloaded MagnaTagATune.
 
-Run AFTER scripts/download_magnatagatune.sh, on a machine with the audio
-on disk (not this sandbox).
+RESUME-SAFE: skips any clip whose feature file already exists, so an
+interrupted Colab session can just be re-run without redoing work.
 
-    python src/prepare_magnatagatune.py --raw_dir data/raw/magnatagatune
-    python src/graph_builder.py   # reads data/splits/*.json, writes
-                                   # data/processed/graphs/<track_id>.npz
-                                   # -- unchanged from the toy-data flow
+SUBSETTABLE: --max_per_split lets you cap how many clips per split get
+processed, so this finishes in a single Colab session instead of
+requiring hours of uninterrupted processing across ~25,863 clips.
+Document the subset size in your report -- it's a disclosed, deliberate
+scope decision given compute/time constraints, not a hidden shortcut.
 
-What this does (entirely self-contained -- see note below on why):
-  1. Parses `annotations_final.csv` directly. This file, shipped with
-     MagnaTagATune itself, already has everything needed: a `clip_id`,
-     188 binary tag columns, and an `mp3_path` column like
-     "8/artist-album-track-...-59-88.mp3" -- the leading character is
-     the hex folder (0-9, a-f) the mp3 was unzipped into.
-  2. Picks the top-50 most frequent tags (standard practice, matches
-     the spec's "MagnaTagATune tag subset (top-50 tags)" suggestion in
-     Task 1's deliverables).
-  3. Splits by hex folder prefix: folders 0-9,a,b -> train (12/16),
-     folder c -> val (1/16), folders d,e,f -> test (3/16). This is the
-     standard ~12:1:3 MTAT split used across the literature (e.g. Won
-     et al. 2020) -- artist/album overlap across the split is minimal
-     in practice since clips from one album tend to cluster in the same
-     folder, but note in your report that MTAT's folder assignment
-     wasn't originally designed as an artist-disjoint split (unlike,
-     say, FMA's official splits), so this is a documented limitation,
-     not a guarantee.
-  4. Extracts mel/chroma features (audio_features.py), written with the
-     same keys as make_toy_dataset.py so graph_builder.py works
-     unmodified -- graph construction stays a separate step.
-  5. Synthesizes a caption per clip from its active tags (MTAT has no
-     real captions) -- clearly flagged as synthetic (`caption_is_synthetic:
-     true`), not passed off as human-written. For genuine free-form
-     captions, use MusicCaps (prepare_musiccaps.py) for Task 4.
-  6. Valence/arousal are NOT set (MTAT has no VA labels) -- set
-     train.emotion_alpha/emotion_beta to 0 in config.yaml for runs on
-     this split (config_mtat.yaml already does this). DEAM is a
-     SEPARATE dataset/split for the VA extension (prepare_deam.py) --
-     there's no genuine per-track alignment between MTAT and DEAM since
-     they're different recordings, so this script does not attempt to
-     fake one.
+    python src/prepare_magnatagatune.py --raw_dir /content/mtat_raw \
+        --feat_dir /content/mtat_features --splits_dir data/splits \
+        --max_per_split 1500
 
-Why self-contained instead of using the widely-used
-minzwon/sota-music-tagging-models split/binary/tag files: those are
-distributed as row-indexed .npy arrays whose row order matches an
-external, undocumented-from-outside file list -- reproducing that
-alignment correctly requires their preprocessing script's exact output,
-which I couldn't verify against the real files from this sandbox.
-annotations_final.csv's own mp3_path column has zero ambiguity, so this
-version needs nothing beyond what MagnaTagATune ships.
+What this does (entirely self-contained, no external split-file dependency):
+  1. Parses `annotations_final.csv` directly (clip_id, 188 tag columns,
+     mp3_path column like "8/artist-...-59-88.mp3" -- leading char is
+     the hex folder).
+  2. Picks the top-K tags by frequency (default 50, matches spec).
+  3. Splits by hex folder prefix: 0-9,a,b -> train, c -> val, d,e,f -> test
+     (~12:1:3, standard MTAT split).
+  4. Extracts mel/chroma features (audio_features.py) to --feat_dir.
+  5. Synthesizes a caption per clip from its tags (MTAT has no real
+     captions) -- flagged `caption_is_synthetic: true`.
+  6. valence/arousal are null (MTAT has none) -- config_mtat.yaml sets
+     emotion_alpha/beta=0 accordingly.
 """
 import argparse
 import json
@@ -87,25 +63,50 @@ def load_annotations(csv_path, top_k=50):
     return df, top_tags
 
 
-def build_manifest(df, top_tags, raw_dir, feat_dir, sr, n_mels, n_chroma, window_seconds, folders):
+def load_existing_manifest(out_path):
+    """For resuming: if this split's json already has entries from a
+    prior partial run, load them so we don't reprocess those clips."""
+    if os.path.exists(out_path):
+        with open(out_path) as f:
+            return json.load(f)
+    return []
+
+
+def build_manifest(df, top_tags, raw_dir, feat_dir, sr, n_mels, n_chroma,
+                    window_seconds, folders, max_clips, existing, split_name):
     os.makedirs(feat_dir, exist_ok=True)
-    manifest = []
+    done_ids = {item["track_id"] for item in existing}
+    manifest = list(existing)  # keep what's already done
+
     subset = df[df["mp3_path"].str[0].isin(folders)]
+    if max_clips is not None:
+        subset = subset.head(max_clips + len(done_ids))  # overshoot to account for skips/failures
+
+    processed_this_run = 0
     for _, row in subset.iterrows():
+        if max_clips is not None and len(manifest) >= max_clips:
+            break
+
+        track_id = f"mtat_{row['clip_id']}"
+        if track_id in done_ids:
+            continue  # already processed in a prior interrupted run
+
         rel_path = row["mp3_path"]
         abs_path = os.path.join(raw_dir, rel_path)
         if not os.path.exists(abs_path):
-            continue  # skip missing files rather than crash the whole prep run
-
-        track_id = f"mtat_{row['clip_id']}"
-        try:
-            mel, chroma, _ = extract_features(abs_path, sr=sr, n_mels=n_mels, n_chroma=n_chroma)
-        except Exception as e:
-            print(f"  [skip] {rel_path}: {e}")
             continue
-        bounds = fixed_window_segments(mel.shape[1], sr, window_seconds=window_seconds)
+
         feat_path = os.path.join(feat_dir, f"{track_id}.npz")
-        np.savez_compressed(feat_path, mel=mel, chroma=chroma, segment_bounds=np.array(bounds))
+        if os.path.exists(feat_path):
+            pass
+        else:
+            try:
+                mel, chroma, _ = extract_features(abs_path, sr=sr, n_mels=n_mels, n_chroma=n_chroma)
+            except Exception as e:
+                print(f"  [skip] {rel_path}: {e}")
+                continue
+            bounds = fixed_window_segments(mel.shape[1], sr, window_seconds=window_seconds)
+            np.savez_compressed(feat_path, mel=mel, chroma=chroma, segment_bounds=np.array(bounds))
 
         tags_vec = [int(row[t]) for t in top_tags]
         active = [t for t, v in zip(top_tags, tags_vec) if v]
@@ -119,22 +120,28 @@ def build_manifest(df, top_tags, raw_dir, feat_dir, sr, n_mels, n_chroma, window
             "valence": None,
             "arousal": None,
         })
+        processed_this_run += 1
+        if processed_this_run % 200 == 0:
+            print(f"  [{split_name}] {processed_this_run} newly processed this run "
+                  f"({len(manifest)} total)...")
+
     return manifest
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--raw_dir", required=True,
-                     help="Dir containing unzipped hex folders (0-9,a-f) and annotations_final.csv")
-    ap.add_argument("--annotations_csv", default=None,
-                     help="Defaults to <raw_dir>/annotations_final.csv")
-    ap.add_argument("--feat_dir", default="data/processed/real/mtat_features")
+    ap.add_argument("--raw_dir", required=True)
+    ap.add_argument("--annotations_csv", default=None)
+    ap.add_argument("--feat_dir", default="/content/mtat_features")
     ap.add_argument("--splits_dir", default="data/splits")
     ap.add_argument("--top_k_tags", type=int, default=50)
     ap.add_argument("--sr", type=int, default=22050)
     ap.add_argument("--n_mels", type=int, default=128)
     ap.add_argument("--n_chroma", type=int, default=12)
     ap.add_argument("--window_seconds", type=float, default=5.0)
+    ap.add_argument("--max_per_split", type=int, default=None,
+                     help="Cap clips per split (e.g. 1500) for a fast, "
+                          "one-session run. Omit for the full dataset.")
     args = ap.parse_args()
 
     ann_csv = args.annotations_csv or os.path.join(args.raw_dir, "annotations_final.csv")
@@ -143,19 +150,20 @@ def main():
 
     os.makedirs(args.splits_dir, exist_ok=True)
     for name, folders in [("train", TRAIN_FOLDERS), ("val", VAL_FOLDERS), ("test", TEST_FOLDERS)]:
+        out_path = os.path.join(args.splits_dir, f"{name}.json")
+        existing = load_existing_manifest(out_path)
+        if existing:
+            print(f"[{name}] resuming -- {len(existing)} clips already done in a prior run")
+
+        max_clips = args.max_per_split
         manifest = build_manifest(
             df, top_tags, args.raw_dir, args.feat_dir, args.sr, args.n_mels,
-            args.n_chroma, args.window_seconds, folders,
+            args.n_chroma, args.window_seconds, folders, max_clips, existing, name,
         )
-        out_path = os.path.join(args.splits_dir, f"{name}.json")
         with open(out_path, "w") as f:
             json.dump(manifest, f)
-        print(f"[{name}] {len(manifest)} tracks (folders {sorted(folders)}) -> {out_path}")
+        print(f"[{name}] {len(manifest)} tracks total (folders {sorted(folders)}) -> {out_path}")
 
-    # written to data/processed/toy/ to match load_tag_vocab()'s hardcoded
-    # default path used throughout train.py/evaluate.py -- the "toy" in
-    # that path is vestigial (it's really just "the tag vocab location"),
-    # kept as-is here rather than touching working code.
     os.makedirs("data/processed/toy", exist_ok=True)
     tag_vocab_path = "data/processed/toy/tag_vocab.json"
     with open(tag_vocab_path, "w") as f:
