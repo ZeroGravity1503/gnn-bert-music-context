@@ -30,6 +30,7 @@ What this does (entirely self-contained, no external split-file dependency):
 import argparse
 import json
 import os
+import random
 
 import numpy as np
 import pandas as pd
@@ -42,10 +43,22 @@ VAL_FOLDERS = set("c")
 TEST_FOLDERS = set("def")
 
 
-def synthesize_caption(active_tags):
+def synthesize_caption(active_tags, clip_id=None):
+    """Builds a caption mentioning only a RANDOM SUBSET of a clip's active
+    tags, not all of them -- deliberately, so downstream models can't
+    solve the tag-prediction task by simply parsing the caption back into
+    a vector. This is what makes Task 1 test genuine tag co-occurrence
+    learning (e.g. "rock" correlating with "guitar") rather than string
+    parsing, and gives Task 3's BERT-only vs. fusion ablation something
+    real to show. Seeded by clip_id so the same clip always gets the same
+    caption across reruns (reproducible, not randomly changing each time).
+    """
     if not active_tags:
         return "an instrumental track with no strong tag associations."
-    return "Tags: " + ", ".join(active_tags) + "."
+    rng = random.Random(clip_id)
+    k = rng.randint(1, max(1, (len(active_tags) + 1) // 2))  # up to ~half the tags
+    mentioned = rng.sample(active_tags, k)
+    return "Tags: " + ", ".join(mentioned) + "."
 
 
 def _sniff_tsv(path):
@@ -114,7 +127,7 @@ def build_manifest(df, top_tags, raw_dir, feat_dir, sr, n_mels, n_chroma,
         manifest.append({
             "track_id": track_id,
             "feature_path": feat_path,
-            "caption": synthesize_caption(active),
+            "caption": synthesize_caption(active, clip_id=row["clip_id"]),
             "caption_is_synthetic": True,
             "tags": tags_vec,
             "valence": None,
