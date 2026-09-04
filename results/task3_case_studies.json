@@ -1,0 +1,44 @@
+[
+  {
+    "track_id": "mtat_2",
+    "caption": "Tags: classical.",
+    "true_tags": [
+      "classical",
+      "strings",
+      "violin",
+      "opera"
+    ],
+    "segment_graph_nodes": 6,
+    "segment_graph_edges": 36,
+    "chord_graph_nodes": 12,
+    "chord_graph_edges": 101
+  },
+  {
+    "track_id": "mtat_6",
+    "caption": "Tags: classical, opera, strings.",
+    "true_tags": [
+      "classical",
+      "strings",
+      "violin",
+      "opera",
+      "classic"
+    ],
+    "segment_graph_nodes": 6,
+    "segment_graph_edges": 40,
+    "chord_graph_nodes": 12,
+    "chord_graph_edges": 103
+  },
+  {
+    "track_id": "mtat_10",
+    "caption": "Tags: opera.",
+    "true_tags": [
+      "classical",
+      "opera",
+      "classic"
+    ],
+    "segment_graph_nodes": 6,
+    "segment_graph_edges": 40,
+    "chord_graph_nodes": 12,
+    "chord_graph_edges": 97
+  }
+]
