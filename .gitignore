@@ -3,3 +3,5 @@ results/*.pt
 data/processed/real/
 src/__pycache__/
 cookies.txt
+
+data/packed/musiccaps_features.npz
