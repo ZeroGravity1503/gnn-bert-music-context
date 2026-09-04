@@ -1,0 +1,32 @@
+[
+  {
+    "caption": "This clip is three tracks playing consecutively. The first one is an electric guitar lead harmony with a groovy bass line, followed by white noise and then a female vocalisation to a vivacious melody with a keyboard harmony, slick drumming, funky bass lines and male backup. The three songs are unrelated and unsynced.",
+    "zero_shot_predicted_tags": []
+  },
+  {
+    "caption": "The Alternative/Indie song features an intimate, widely spread, mixed vocals singing over noisy snare, punchy kick, wide tinny hi hats, electric guitar melody, synth lead melody and groovy bass guitar. At the end of the loop there is a short snare roll and some claps. It sounds easygoing and melancholic thanks to those vocals.",
+    "zero_shot_predicted_tags": [
+      [
+        "ambient",
+        0.301
+      ]
+    ]
+  },
+  {
+    "caption": "A bagpipe ensemble playing a quick melody in unison, employing trills to ornament it.",
+    "zero_shot_predicted_tags": [
+      [
+        "classical",
+        0.328
+      ]
+    ]
+  },
+  {
+    "caption": "The low quality recording features loud bells and metallic squeaking sounds. The recording is mono and noisy.",
+    "zero_shot_predicted_tags": []
+  },
+  {
+    "caption": "The low quality recording features a cover of a rock song with a rock instrumental playback playing in the background and electric guitar solo melody playing on top of it. It sounds muffled and noisy, as it was probably recorded with a low quality microphone, but it is still passionate and emotional.",
+    "zero_shot_predicted_tags": []
+  }
+]
