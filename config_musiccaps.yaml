@@ -1,5 +1,5 @@
 data:
-  graph_dir: data/processed/musiccaps_graphs
+  graph_dir: /content/musiccaps_graphs
   max_text_len: 128
   mode: toy
   n_chroma: 12

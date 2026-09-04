@@ -5,3 +5,5 @@ src/__pycache__/
 cookies.txt
 
 data/packed/musiccaps_features.npz
+
+data/musiccaps_checkpoint/
