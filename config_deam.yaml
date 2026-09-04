@@ -1,5 +1,5 @@
 data:
-  graph_dir: data/processed/deam_graphs
+  graph_dir: /content/deam_graphs
   max_text_len: 128
   mode: toy
   n_chroma: 12
@@ -20,7 +20,7 @@ model:
   gnn_hidden: 128
   gnn_layers: 3
   gnn_type: sage
-  num_tags: 20
+  num_tags: 50
 train:
   batch_size: 8
   contrastive_temperature: 0.07
