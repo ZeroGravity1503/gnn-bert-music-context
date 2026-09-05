@@ -1,0 +1,11 @@
+{
+  "task3_fusion": {
+    "macro_f1": 0.0,
+    "micro_f1": 0.0,
+    "mean_auc_pr": NaN,
+    "valence_mae": 0.8127543330192566,
+    "arousal_mae": 0.788303792476654,
+    "valence_r2": 0.23978865146636963,
+    "arousal_r2": 0.33503472805023193
+  }
+}
