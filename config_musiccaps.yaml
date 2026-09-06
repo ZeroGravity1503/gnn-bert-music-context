@@ -6,7 +6,7 @@ data:
   n_mels: 128
   sample_rate: 22050
   segment_seconds: 5
-  splits_dir: data/splits_musiccaps
+  splits_dir: data/splits/musiccaps
   toy_dir: data/processed/toy
 eval:
   top_k_retrieval:

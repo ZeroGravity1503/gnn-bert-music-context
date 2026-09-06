@@ -193,3 +193,30 @@ not a structural problem. DEAM's CSV parsing and MusicCaps' YouTube
 download were smoke-tested similarly for their code paths, but their
 exact live file formats (which can drift over time) weren't verified
 against the real hosts.
+
+
+## Actual repository structure vs. the assignment's illustrative example
+
+This repo extends the assignment's single-dataset example structure to
+support three real datasets (MagnaTagATune, DEAM, MusicCaps) instead of
+one. Every addition is functional, not incidental:
+
+- `config_mtat.yaml`, `config_deam.yaml`, `config_musiccaps.yaml`: one
+  config per dataset (vs. a single `config.yaml`), since each dataset
+  needs different paths/hyperparameters.
+- `src/datasets.py`: Dataset classes used by `train.py`/`evaluate.py`.
+- `src/prepare_magnatagatune.py`, `prepare_deam.py`, `prepare_musiccaps.py`,
+  `download_musiccaps.py`: the actual code that produced the real,
+  submitted data/results for each dataset -- required for reproducibility.
+- `src/pack_dir.py`/`unpack_dir.py`: utilities to persist/restore graph
+  data given Colab's ephemeral storage and GitHub's 100MB file limit.
+- `data/packed/`: compressed graph archives (safe to commit; the
+  unpacked versions are regenerated locally via `unpack_dir.py`).
+- `data/splits/deam/`, `data/splits/musiccaps/`: nested under the main
+  `splits/` folder alongside MagnaTagATune's own split files.
+- `data/raw/` is intentionally absent: raw audio (~GBs) is
+  redownloadable via the `prepare_*.py`/`download_musiccaps.py` scripts
+  and not committed, standard practice for datasets this size.
+- `results/`: contains the required `metrics.json`, `plots/`,
+  `retrieval_examples/`, plus per-task loss histories, example
+  predictions, and case studies referenced directly in the report.

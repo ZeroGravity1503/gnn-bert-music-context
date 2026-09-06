@@ -1,10 +1,11 @@
 {
-  "task4_contrastive": {
-    "audio2caption_R@1": 0.017985611510791366,
-    "audio2caption_R@5": 0.1079136690647482,
-    "audio2caption_R@10": 0.16906474820143885,
-    "caption2audio_R@1": 0.02158273381294964,
-    "caption2audio_R@5": 0.08992805755395683,
-    "caption2audio_R@10": 0.1906474820143885
+  "task3_fusion": {
+    "macro_f1": 0.0,
+    "micro_f1": 0.0,
+    "mean_auc_pr": NaN,
+    "valence_mae": 0.8127543330192566,
+    "arousal_mae": 0.788303792476654,
+    "valence_r2": 0.23978865146636963,
+    "arousal_r2": 0.33503472805023193
   }
 }

@@ -1,12 +1,12 @@
 data:
-  graph_dir: /content/deam_graphs
+  graph_dir: /content/mtat_graphs
   max_text_len: 128
   mode: toy
   n_chroma: 12
   n_mels: 128
   sample_rate: 22050
   segment_seconds: 5
-  splits_dir: data/splits/deam
+  splits_dir: data/splits
   toy_dir: data/processed/toy
 eval:
   top_k_retrieval:
@@ -16,7 +16,7 @@ eval:
 model:
   bert_hidden: 768
   bert_name: distilbert-base-uncased
-  fusion_type: cross_attn
+  fusion_type: concat
   gnn_hidden: 128
   gnn_layers: 3
   gnn_type: sage
@@ -24,10 +24,10 @@ model:
 train:
   batch_size: 8
   contrastive_temperature: 0.07
-  emotion_alpha: 0.5
-  emotion_beta: 0.5
+  emotion_alpha: 0.0
+  emotion_beta: 0.0
   epochs: 3
   gnn_lr: 0.001
   lr: 2.0e-05
   seed: 42
-  tag_weight: 0.0
+  tag_weight: 1.0
