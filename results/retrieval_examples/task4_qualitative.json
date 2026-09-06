@@ -1,0 +1,92 @@
+[
+  {
+    "query_caption": "This clip is three tracks playing consecutively. The first one is an electric guitar lead harmony with a groovy bass line, followed by white noise and then a female vocalisation to a vivacious melody with a keyboard harmony, slick drumming, funky bass lines and male backup. The three songs are unrelated and unsynced.",
+    "true_track_id": "-1OlgJWehn8",
+    "top3_retrieved": [
+      "2SQxfaWAJJg",
+      "YSXrSxC68VM",
+      "1j13NdQiw8c"
+    ]
+  },
+  {
+    "query_caption": "The Alternative/Indie song features an intimate, widely spread, mixed vocals singing over noisy snare, punchy kick, wide tinny hi hats, electric guitar melody, synth lead melody and groovy bass guitar. At the end of the loop there is a short snare roll and some claps. It sounds easygoing and melancholic thanks to those vocals.",
+    "true_track_id": "-BHPu-dPmWQ",
+    "top3_retrieved": [
+      "FCvs17jk10A",
+      "liuCTk2nPG8",
+      "2SQxfaWAJJg"
+    ]
+  },
+  {
+    "query_caption": "A bagpipe ensemble playing a quick melody in unison, employing trills to ornament it.",
+    "true_track_id": "-DeAdhYKbGE",
+    "top3_retrieved": [
+      "maZ3b5w6xVI",
+      "ExghbCGRBx0",
+      "WYbD9YUrf_4"
+    ]
+  },
+  {
+    "query_caption": "The low quality recording features loud bells and metallic squeaking sounds. The recording is mono and noisy.",
+    "true_track_id": "-FEPOSP7ay0",
+    "top3_retrieved": [
+      "0vFPs6XsU_Q",
+      "0fiOM---7QI",
+      "YK1AEw1kf28"
+    ]
+  },
+  {
+    "query_caption": "The low quality recording features a cover of a rock song with a rock instrumental playback playing in the background and electric guitar solo melody playing on top of it. It sounds muffled and noisy, as it was probably recorded with a low quality microphone, but it is still passionate and emotional.",
+    "true_track_id": "-Umconw-CRE",
+    "top3_retrieved": [
+      "XscK8V4Veac",
+      "YW4AKwkpYxs",
+      "DNYDyXn6qso"
+    ]
+  },
+  {
+    "query_caption": "The low quality recording features a flat male vocal singing over acoustic rhythm guitar chords, after which that same vocal is talking. The song sounds passionate, while the recording, overall, is noisy and in mono.",
+    "true_track_id": "-UuEBhule84",
+    "top3_retrieved": [
+      "EptdhC17avY",
+      "-_OzT7Xyvok",
+      "DVuWm53IlVw"
+    ]
+  },
+  {
+    "query_caption": "The low quality recording features a low windpipe vocal sound played in nature, surrounded by flowing water and chirping birds sound effects. Sounds a bit harsh and loud, as the tone of the windpipe is constantly changing.",
+    "true_track_id": "-Vo4CAMX26U",
+    "top3_retrieved": [
+      "GMFWnMRtfNI",
+      "l21xSYRR_Xc",
+      "VlwbDjggUKk"
+    ]
+  },
+  {
+    "query_caption": "Amateur recording of two nylon string guitars playing in flamenco style. The playing is technically challenging yet sloppy.",
+    "true_track_id": "-_OzT7Xyvok",
+    "top3_retrieved": [
+      "WWIT13tTW7c",
+      "01hjVJN9xCg",
+      "GmGWvBNO8JI"
+    ]
+  },
+  {
+    "query_caption": "The pop rock music features a male voice singing. An electric guitar with a distortion effect on plays plays two chords every two measures. The drums play a strong rhythm and together with a synth bass drive the pulse of the music.",
+    "true_track_id": "-hSMzrWZCAE",
+    "top3_retrieved": [
+      "TC4mH6nACm8",
+      "FTdcanPJw6E",
+      "HFVM5pVTwkM"
+    ]
+  },
+  {
+    "query_caption": "The song is an instrumental. The song is medium tempo played by a solo guitarist on a vintage super tone with an exquisite tone. The song is emotional and passionate. The song has poor audio quality.",
+    "true_track_id": "-lPXTBXa0tE",
+    "top3_retrieved": [
+      "nxdHojfss_A",
+      "YW4AKwkpYxs",
+      "XOLVI1bgxqk"
+    ]
+  }
+]

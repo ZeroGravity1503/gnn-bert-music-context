@@ -1,0 +1,104 @@
+[
+  {
+    "track_id": "mtat_2",
+    "caption_input": "Tags: classical.",
+    "true_tags": [
+      "classical",
+      "strings",
+      "violin",
+      "opera"
+    ],
+    "predicted_tags": [
+      [
+        "classical",
+        0.956
+      ]
+    ]
+  },
+  {
+    "track_id": "mtat_6",
+    "caption_input": "Tags: classical, opera, strings.",
+    "true_tags": [
+      "classical",
+      "strings",
+      "violin",
+      "opera",
+      "classic"
+    ],
+    "predicted_tags": [
+      [
+        "classical",
+        0.932
+      ],
+      [
+        "strings",
+        0.934
+      ],
+      [
+        "violin",
+        0.86
+      ],
+      [
+        "opera",
+        0.66
+      ]
+    ]
+  },
+  {
+    "track_id": "mtat_10",
+    "caption_input": "Tags: opera.",
+    "true_tags": [
+      "classical",
+      "opera",
+      "classic"
+    ],
+    "predicted_tags": [
+      [
+        "opera",
+        0.836
+      ]
+    ]
+  },
+  {
+    "track_id": "mtat_11",
+    "caption_input": "Tags: quiet.",
+    "true_tags": [
+      "opera",
+      "quiet"
+    ],
+    "predicted_tags": [
+      [
+        "quiet",
+        0.921
+      ]
+    ]
+  },
+  {
+    "track_id": "mtat_12",
+    "caption_input": "Tags: violin, classic.",
+    "true_tags": [
+      "classical",
+      "strings",
+      "violin",
+      "classic"
+    ],
+    "predicted_tags": [
+      [
+        "classical",
+        0.891
+      ],
+      [
+        "strings",
+        0.564
+      ],
+      [
+        "violin",
+        0.794
+      ],
+      [
+        "classic",
+        0.669
+      ]
+    ]
+  }
+]
