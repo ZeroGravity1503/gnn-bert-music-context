@@ -1,11 +1,47 @@
 {
-  "task3_fusion": {
-    "macro_f1": 0.0,
-    "micro_f1": 0.0,
-    "mean_auc_pr": NaN,
+  "task1_bert": {
+    "macro_f1": 0.572613793834166,
+    "micro_f1": 0.6241765480895916,
+    "mean_auc_pr": 0.6324679328521191
+  },
+  "task2_gnn": {
+    "macro_f1": 0.0776524962749813,
+    "micro_f1": 0.15032818124073682,
+    "mean_auc_pr": 0.19099502262949358
+  },
+  "B1_random": {
+    "macro_f1": 0.08894007427236804,
+    "micro_f1": 0.0929773454991935,
+    "mean_auc_pr": 0.054740049898253595
+  },
+  "B2_cnn": {
+    "macro_f1": 0.018922059329481763,
+    "micro_f1": 0.04127299850820487,
+    "mean_auc_pr": 0.1340811157882675
+  },
+  "task3_fusion_cross_attn_mtat": {
+    "macro_f1": 0.5452643041296831,
+    "micro_f1": 0.6074441687344914,
+    "mean_auc_pr": 0.6257704491601453
+  },
+  "task3_fusion_concat_mtat": {
+    "macro_f1": 0.5801060142782835,
+    "micro_f1": 0.623422840504691,
+    "mean_auc_pr": 0.6310593657168297
+  },
+  "task3_fusion_deam_emotion_regression": {
     "valence_mae": 0.8127543330192566,
     "arousal_mae": 0.788303792476654,
     "valence_r2": 0.23978865146636963,
-    "arousal_r2": 0.33503472805023193
+    "arousal_r2": 0.33503472805023193,
+    "note": "tag metrics N/A -- DEAM has no tag labels"
+  },
+  "task4_contrastive_musiccaps": {
+    "audio2caption_R@1": 0.017985611510791366,
+    "audio2caption_R@5": 0.1079136690647482,
+    "audio2caption_R@10": 0.16906474820143885,
+    "caption2audio_R@1": 0.02158273381294964,
+    "caption2audio_R@5": 0.08992805755395683,
+    "caption2audio_R@10": 0.1906474820143885
   }
 }
