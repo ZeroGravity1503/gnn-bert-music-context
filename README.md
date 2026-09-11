@@ -19,12 +19,14 @@ clips, Task 3's emotion-regression extension), and **MusicCaps**
 results, or `results/metrics.json` for the raw numbers.
 
 ## Repository structure
+
 gnn-bert-music-context/
 ├── README.md
 ├── requirements.txt
 ├── config.yaml, config_mtat.yaml, config_deam.yaml,
 │ config_musiccaps.yaml, config_mtat_concat.yaml
 ├── data/
+│ ├── raw/ # raw dataset downloads (not committed, see data/raw/README.md)
 │ ├── processed/graph_samples/ # 25 real MTAT graph samples
 │ ├── packed/ # compressed graph archives (all 3 datasets)
 │ └── splits/ # real train/val/test JSON (+ deam/, musiccaps/ subfolders)
@@ -48,6 +50,7 @@ gnn-bert-music-context/
 └── report/
 ├── final_report.pdf
 └── final_report.tex
+
 
 See "Structural deviations from the assignment's example" below for why
 this differs from the assignment's single-dataset illustrative structure.
