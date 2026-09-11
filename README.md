@@ -20,37 +20,47 @@ results, or `results/metrics.json` for the raw numbers.
 
 ## Repository structure
 
+```text
 gnn-bert-music-context/
+
 ├── README.md
 ├── requirements.txt
 ├── config.yaml, config_mtat.yaml, config_deam.yaml,
-│ config_musiccaps.yaml, config_mtat_concat.yaml
-├── data/
-│ ├── raw/ # raw dataset downloads (not committed, see data/raw/README.md)
-│ ├── processed/graph_samples/ # 25 real MTAT graph samples
-│ ├── packed/ # compressed graph archives (all 3 datasets)
-│ └── splits/ # real train/val/test JSON (+ deam/, musiccaps/ subfolders)
-├── notebooks/
-│ ├── eda.ipynb # real tag frequency + valence/arousal analysis
-│ └── demo_context.ipynb # real end-to-end inference example
-├── src/
-│ ├── audio_features.py, graph_builder.py, bert_encoder.py,
-│ │ gnn_model.py, fusion_model.py, contrastive.py, train.py, evaluate.py
-│ ├── datasets.py # Dataset classes
-│ ├── prepare_magnatagatune.py, prepare_deam.py, prepare_musiccaps.py,
-│ │ download_musiccaps.py # real data preparation (produced the submitted results)
-│ ├── pack_dir.py, unpack_dir.py # graph persistence utilities
-│ ├── train_task1_with_curves.py # Task 1 F1-per-epoch tracking
-│ └── make_toy_dataset.py # synthetic data generator, used for pipeline testing only
-├── results/
-│ ├── metrics.json # consolidated real results, all 4 tasks + DEAM
-│ ├── plots/tsne_fusion_z.png
-│ ├── retrieval_examples/task4_qualitative.json
-│ └── (per-task loss histories, example predictions, case studies)
-└── report/
-├── final_report.pdf
-└── final_report.tex
+│   config_musiccaps.yaml, config_mtat_concat.yaml
 
+├── data/
+│   ├── raw/ # raw dataset downloads (not committed, see data/raw/README.md)
+│   ├── processed/
+│   │   └── graph_samples/ # 25 real MTAT graph samples
+│   ├── packed/ # compressed graph archives (all 3 datasets)
+│   └── splits/ # real train/val/test JSON (+ deam/, musiccaps/ subfolders)
+
+├── notebooks/
+│   ├── eda.ipynb # real tag frequency + valence/arousal analysis
+│   └── demo_context.ipynb # real end-to-end inference example
+
+├── src/
+│   ├── audio_features.py, graph_builder.py, bert_encoder.py,
+│   │   gnn_model.py, fusion_model.py, contrastive.py, train.py, evaluate.py
+│   ├── datasets.py # Dataset classes
+│   ├── prepare_magnatagatune.py, prepare_deam.py, prepare_musiccaps.py,
+│   │   download_musiccaps.py # real data preparation (produced the submitted results)
+│   ├── pack_dir.py, unpack_dir.py # graph persistence utilities
+│   ├── train_task1_with_curves.py # Task 1 F1-per-epoch tracking
+│   └── make_toy_dataset.py # synthetic data generator, used for pipeline testing only
+
+├── results/
+│   ├── metrics.json # consolidated real results, all 4 tasks + DEAM
+│   ├── plots/
+│   │   └── tsne_fusion_z.png
+│   ├── retrieval_examples/
+│   │   └── task4_qualitative.json
+│   └── (per-task loss histories, example predictions, case studies)
+
+└── report/
+    ├── final_report.pdf
+    └── final_report.tex
+```
 
 See "Structural deviations from the assignment's example" below for why
 this differs from the assignment's single-dataset illustrative structure.
