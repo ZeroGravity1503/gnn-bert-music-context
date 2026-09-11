@@ -639,7 +639,43 @@ datasets; jointly training on synthetic and natural captions to close
 the zero-shot transfer gap identified in Section V-C3; and
 re-examining the concat-vs-cross-attention gap at larger data scale to
 test whether it reverses as hypothesized in Section VI.
+\section{Consolidated Comparison Table}
+Table~\ref{tab:consolidated} presents all models in a single unified
+comparison, in the same format as the assignment's illustrative Table 3.
+Cells are marked ``--'' where a metric does not apply to that model
+(e.g., baselines have no emotion-regression output; tag-classification
+models have no retrieval output). The DEAM row is trained as a
+genuinely separate experiment from the MTAT rows above it (Section~III-C)
+-- MTAT provides tags but no emotion labels, DEAM provides emotion
+labels but no tags -- so no single row reports both non-``--'' tag and
+emotion numbers together, which would misrepresent one model as having
+produced both.
 
+\begin{table}[h]
+\centering
+\caption{Consolidated performance comparison (real results)}
+\label{tab:consolidated}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Model & Macro-F1 & AUC-PR & MAE (emo.) & R@5 (retr.) \\
+\midrule
+B1: Random baseline & 0.089 & 0.055 & -- & 0.018 \\
+B2: CNN mel-spec & 0.019 & 0.134 & -- & -- \\
+Task 1: BERT-only & 0.573 & 0.632 & -- & -- \\
+Task 2: GNN-only & 0.078 & 0.191 & -- & -- \\
+Task 3: GNN--BERT (concat) & \textbf{0.580} & \textbf{0.631} & -- & -- \\
+Task 3: GNN--BERT (cross-attn) & 0.545 & 0.626 & -- & -- \\
+Task 3: GNN--BERT (DEAM)$^*$ & -- & -- & 0.81 / 0.79 & -- \\
+Task 4: Contrastive & -- & -- & -- & 0.108 / 0.090 \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+{\footnotesize $^*$Separate experiment (Section III-C); MAE shown as
+valence/arousal. Task 4's R@5 shown as audio$\to$caption /
+caption$\to$audio (Table~\ref{tab:task4}).}
+\end{table}
 \section{Reproducibility}
 Code, configs, real graph samples, and all results referenced in this
 report are available at: \url{https://github.com/ZeroGravity1503/gnn-bert-music-context}.
